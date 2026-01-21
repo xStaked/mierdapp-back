@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+pnpm-debug.log
+.env
+.git
+.idea
+.vscode
+dist
+migrations
+*.md
+Dockerfile
+docker-compose.yml

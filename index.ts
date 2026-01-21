@@ -13,6 +13,7 @@ import {
   searchValidator,
   uuidParamValidator
 } from './lib/validators.js'
+import { runMigrations } from './lib/migrate.js'
 import type {
   UserRow,
   PoopLogRow,
@@ -836,6 +837,29 @@ app.get('/api/leaderboard', authMiddleware, async (req: AuthRequest, res: Respon
 
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+const startServer = async () => {
+  // Wait for DB to be configured (useful in Docker)
+  let retries = 5
+  while (retries > 0 && !isDbReady()) {
+    console.log('Waiting for DATABASE_URL...')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    retries--
+  }
+
+  if (isDbReady()) {
+    try {
+      console.log('Running migrations...')
+      await runMigrations()
+      console.log('Migrations completed.')
+    } catch (err) {
+      console.error('Migration failed:', err)
+      // We still try to start the app, or we could exit
+    }
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+}
+
+startServer()
