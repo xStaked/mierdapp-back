@@ -1,0 +1,28 @@
+{
+  "name": "backend-daily-poo",
+  "type": "module",
+  "scripts": {
+    "start": "tsx --env-file=.env index.ts",
+    "dev": "tsx --watch --env-file=.env index.ts"
+  },
+  "dependencies": {
+    "@idealane/node-sdk": "latest",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}
