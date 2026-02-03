@@ -24,13 +24,13 @@ import type {
 const app = express()
 
 // Trust proxy (required when behind reverse proxy like Dokploy/nginx)
-app.set('trust proxy', 1)
+// app.set('trust proxy', 1)
 
 // Security Headers
 app.use(helmet())
 
 // CORS Configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173']
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173', "*"]
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
