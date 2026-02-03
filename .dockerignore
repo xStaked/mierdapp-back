@@ -6,7 +6,7 @@ pnpm-debug.log
 .idea
 .vscode
 dist
-migrations
+
 *.md
 Dockerfile
 docker-compose.yml
