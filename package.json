@@ -2,13 +2,14 @@
   "name": "backend-daily-poo",
   "type": "module",
   "scripts": {
-    "start": "tsx --env-file=.env index.ts",
-    "dev": "tsx --watch --env-file=.env index.ts"
+    "start": "tsx index.ts",
+    "dev": "tsx --watch index.ts"
   },
   "dependencies": {
     "@idealane/node-sdk": "latest",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.21.0",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.1",
