@@ -30,7 +30,9 @@ app.set('trust proxy', 1)
 app.use(helmet())
 
 // CORS Configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173', "*"]
+const allowedOrigins = [
+  "*"
+]
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
