@@ -1,5 +1,2 @@
 [variables]
     NIXPACKS_PATH = "/app/node_modules/.bin"
-
-[phases.setup]
-    nixPkgs = ["nodejs-20_x"]
