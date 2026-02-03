@@ -24,7 +24,7 @@ import type {
 const app = express()
 
 // Trust proxy (required when behind reverse proxy like Dokploy/nginx)
-// app.set('trust proxy', 1)
+app.set('trust proxy', 1)
 
 // Security Headers
 app.use(helmet())
