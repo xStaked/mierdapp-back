@@ -194,7 +194,7 @@ app.post('/api/auth/register', registerValidator, async (req: Request, res: Resp
 })
 
 // Auth / Change Password
-app.put('/api/auth/password', authMiddleware, changePasswordValidator, async (req: AuthRequest, res: Response) => {
+app.put('/api/auth/password', changePasswordValidator, async (req: AuthRequest, res: Response) => {
   try {
     if (!isDbReady()) {
       return res.status(503).json({ error: 'Database not configured' })
