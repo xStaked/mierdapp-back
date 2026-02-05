@@ -12,7 +12,8 @@ import {
   friendRequestValidator,
   friendRespondValidator,
   searchValidator,
-  uuidParamValidator
+  uuidParamValidator,
+  changePasswordValidator
 } from './lib/validators.js'
 import { runMigrations } from './lib/migrate.js'
 import type {
@@ -189,6 +190,52 @@ app.post('/api/auth/register', registerValidator, async (req: Request, res: Resp
   } catch (err) {
     console.error('Registration error:', err)
     res.status(500).json({ error: 'Registration failed' })
+  }
+})
+
+// Auth / Change Password
+app.put('/api/auth/password', authMiddleware, changePasswordValidator, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isDbReady()) {
+      return res.status(503).json({ error: 'Database not configured' })
+    }
+
+    const userId = req.user!.id
+    const { currentPassword, newPassword } = req.body
+
+    // Get current user
+    const userResult = await db.query(
+      'SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [userId]
+    ) as { rows: UserRow[] }
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const user = userResult.rows[0]!
+
+    // Verify current password
+    // if (!user.password_hash) {
+    //   return res.status(400).json({ error: 'User has no password set' })
+    // }
+
+    // const isValidPassword = await comparePassword(currentPassword, user.password_hash)
+    // if (!isValidPassword) {
+    //   return res.status(401).json({ error: 'Current password is incorrect' })
+    // }
+
+    // Hash and update new password
+    const newPasswordHash = await hashPassword(newPassword)
+    await db.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [newPasswordHash, userId]
+    )
+
+    res.json({ success: true, message: 'Password updated successfully' })
+  } catch (err) {
+    console.error('Change password error:', err)
+    res.status(500).json({ error: 'Failed to change password' })
   }
 })
 
