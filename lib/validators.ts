@@ -67,15 +67,6 @@ export const searchValidator = [
     validate,
 ];
 
-// Change Password Validator
-export const changePasswordValidator = [
-    body('currentPassword').notEmpty().withMessage('Current password is required'),
-    body('newPassword')
-        .isLength({ min: 6 })
-        .withMessage('New password must be at least 6 characters long'),
-    validate,
-];
-
 // UUID Param Validator
 export const uuidParamValidator = (paramName: string) => [
     param(paramName).isUUID().withMessage(`Invalid ${paramName}`),

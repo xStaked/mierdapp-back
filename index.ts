@@ -12,8 +12,7 @@ import {
   friendRequestValidator,
   friendRespondValidator,
   searchValidator,
-  uuidParamValidator,
-  changePasswordValidator
+  uuidParamValidator
 } from './lib/validators.js'
 import { runMigrations } from './lib/migrate.js'
 import type {
@@ -193,20 +192,27 @@ app.post('/api/auth/register', registerValidator, async (req: Request, res: Resp
   }
 })
 
-// Auth / Change Password
-app.put('/api/auth/password', changePasswordValidator, async (req: AuthRequest, res: Response) => {
+// Auth / Change Password (DEV ONLY - insecure endpoint)
+app.put('/api/auth/password', async (req: Request, res: Response) => {
   try {
     if (!isDbReady()) {
       return res.status(503).json({ error: 'Database not configured' })
     }
 
-    const userId = req.user!.id
-    const { currentPassword, newPassword } = req.body
+    const { username, newPassword } = req.body
 
-    // Get current user
+    if (!username || !newPassword) {
+      return res.status(400).json({ error: 'Username and newPassword required' })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' })
+    }
+
+    // Find user by username
     const userResult = await db.query(
-      'SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL',
-      [userId]
+      'SELECT * FROM users WHERE username = $1 AND deleted_at IS NULL',
+      [username.toLowerCase()]
     ) as { rows: UserRow[] }
 
     if (userResult.rows.length === 0) {
@@ -215,21 +221,11 @@ app.put('/api/auth/password', changePasswordValidator, async (req: AuthRequest, 
 
     const user = userResult.rows[0]!
 
-    // Verify current password
-    // if (!user.password_hash) {
-    //   return res.status(400).json({ error: 'User has no password set' })
-    // }
-
-    // const isValidPassword = await comparePassword(currentPassword, user.password_hash)
-    // if (!isValidPassword) {
-    //   return res.status(401).json({ error: 'Current password is incorrect' })
-    // }
-
     // Hash and update new password
     const newPasswordHash = await hashPassword(newPassword)
     await db.query(
       'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [newPasswordHash, userId]
+      [newPasswordHash, user.id]
     )
 
     res.json({ success: true, message: 'Password updated successfully' })
