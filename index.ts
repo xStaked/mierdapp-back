@@ -376,26 +376,27 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res: Response) =>
     }
 
     const userId = req.user!.id
+    const tz = (req.headers['x-timezone'] as string) || 'UTC'
 
     // Today count
     const todayResult = await db.query(
-      `SELECT COUNT(*) as count FROM poop_logs 
-       WHERE user_id = $1 AND DATE(timestamp) = CURRENT_DATE`,
-      [userId]
+      `SELECT COUNT(*) as count FROM poop_logs
+       WHERE user_id = $1 AND (timestamp AT TIME ZONE $2)::date = (CURRENT_TIMESTAMP AT TIME ZONE $2)::date`,
+      [userId, tz]
     )
 
     // Week count
     const weekResult = await db.query(
-      `SELECT COUNT(*) as count FROM poop_logs 
-       WHERE user_id = $1 AND timestamp >= DATE_TRUNC('week', CURRENT_DATE)`,
-      [userId]
+      `SELECT COUNT(*) as count FROM poop_logs
+       WHERE user_id = $1 AND (timestamp AT TIME ZONE $2)::date >= DATE_TRUNC('week', (CURRENT_TIMESTAMP AT TIME ZONE $2)::date)::date`,
+      [userId, tz]
     )
 
     // Month count
     const monthResult = await db.query(
-      `SELECT COUNT(*) as count FROM poop_logs 
-       WHERE user_id = $1 AND timestamp >= DATE_TRUNC('month', CURRENT_DATE)`,
-      [userId]
+      `SELECT COUNT(*) as count FROM poop_logs
+       WHERE user_id = $1 AND (timestamp AT TIME ZONE $2)::date >= DATE_TRUNC('month', (CURRENT_TIMESTAMP AT TIME ZONE $2)::date)::date`,
+      [userId, tz]
     )
 
     // All time count
@@ -406,27 +407,33 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res: Response) =>
 
     // Daily data for last 30 days
     const dailyDataResult = await db.query(
-      `SELECT DATE(timestamp) as date, COUNT(*) as count 
-       FROM poop_logs 
-       WHERE user_id = $1 AND timestamp >= CURRENT_DATE - INTERVAL '30 days'
-       GROUP BY DATE(timestamp)
+      `SELECT (timestamp AT TIME ZONE $2)::date as date, COUNT(*) as count
+       FROM poop_logs
+       WHERE user_id = $1 AND (timestamp AT TIME ZONE $2)::date >= ((CURRENT_TIMESTAMP AT TIME ZONE $2)::date - INTERVAL '30 days')::date
+       GROUP BY (timestamp AT TIME ZONE $2)::date
        ORDER BY date DESC`,
-      [userId]
+      [userId, tz]
     )
 
     // Calculate streak
     const streakResult = await db.query(
-      `SELECT DISTINCT DATE(timestamp) as date 
-       FROM poop_logs 
-       WHERE user_id = $1 
+      `SELECT DISTINCT (timestamp AT TIME ZONE $2)::date as date
+       FROM poop_logs
+       WHERE user_id = $1
        ORDER BY date DESC`,
-      [userId]
+      [userId, tz]
     ) as { rows: Array<{ date: string | Date }> }
+
+    // Get "today" in user's timezone from PostgreSQL for consistent streak calculation
+    const userTodayResult = await db.query(
+      `SELECT (CURRENT_TIMESTAMP AT TIME ZONE $1)::date as today`,
+      [tz]
+    ) as { rows: Array<{ today: string | Date }> }
 
     let currentStreak = 0
     let longestStreak = 0
     let tempStreak = 0
-    const today = new Date()
+    const today = new Date(userTodayResult.rows[0]!.today)
     today.setHours(0, 0, 0, 0)
 
     const dates = streakResult.rows.map((r: { date: string | Date }) => {
@@ -520,16 +527,17 @@ app.get('/api/friends', authMiddleware, async (req: AuthRequest, res: Response) 
     }
 
     const userId = req.user!.id
+    const tz = (req.headers['x-timezone'] as string) || 'UTC'
 
     const result = await db.query(
       `SELECT f.*, u.id as user_id, u.username, u.display_name,
-              (SELECT COUNT(*) FROM poop_logs WHERE user_id = u.id AND DATE(timestamp) = CURRENT_DATE) as today_count,
-              (SELECT COUNT(*) FROM poop_logs WHERE user_id = u.id AND timestamp >= DATE_TRUNC('week', CURRENT_DATE)) as week_count
+              (SELECT COUNT(*) FROM poop_logs WHERE user_id = u.id AND (timestamp AT TIME ZONE $2)::date = (CURRENT_TIMESTAMP AT TIME ZONE $2)::date) as today_count,
+              (SELECT COUNT(*) FROM poop_logs WHERE user_id = u.id AND (timestamp AT TIME ZONE $2)::date >= DATE_TRUNC('week', (CURRENT_TIMESTAMP AT TIME ZONE $2)::date)::date) as week_count
        FROM friendships f
        JOIN users u ON (f.user_id = $1 AND f.friend_id = u.id) OR (f.friend_id = $1 AND f.user_id = u.id AND f.status = 'accepted')
        WHERE (f.user_id = $1 OR f.friend_id = $1)
        AND u.id != $1`,
-      [userId]
+      [userId, tz]
     ) as { rows: FriendshipRow[] }
 
     const friends = result.rows.map((row: FriendshipRow) => ({
@@ -846,6 +854,7 @@ app.get('/api/leaderboard', authMiddleware, async (req: AuthRequest, res: Respon
     }
     console.log('ejecutando leaderboard')
     const userId = req.user!.id
+    const tz = (req.headers['x-timezone'] as string) || 'UTC'
 
     // Get user and their friends' weekly counts
     const result = await db.query(
@@ -853,7 +862,7 @@ app.get('/api/leaderboard', authMiddleware, async (req: AuthRequest, res: Respon
               COUNT(p.id) as week_count
        FROM users u
        LEFT JOIN poop_logs p ON p.user_id = u.id
-         AND p.timestamp >= DATE_TRUNC('week', CURRENT_DATE)
+         AND (p.timestamp AT TIME ZONE $2)::date >= DATE_TRUNC('week', (CURRENT_TIMESTAMP AT TIME ZONE $2)::date)::date
        WHERE u.id = $1
           OR u.id IN (
             SELECT CASE WHEN user_id = $1 THEN friend_id ELSE user_id END
@@ -862,7 +871,7 @@ app.get('/api/leaderboard', authMiddleware, async (req: AuthRequest, res: Respon
           )
        GROUP BY u.id, u.username, u.display_name
        ORDER BY week_count DESC`,
-      [userId]
+      [userId, tz]
     ) as { rows: Array<UserRow & { week_count: string }> }
 
     const leaderboard = result.rows.map((row: UserRow & { week_count: string }, index: number) => ({
